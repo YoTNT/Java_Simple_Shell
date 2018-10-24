@@ -12,6 +12,7 @@ public class SimpleShell {
 		boolean isWindows = System.getProperty("os.name")
 			.toLowerCase().startsWith("windows");
 		boolean init = false;
+		int commandShift;
 		Stack<String> currentRelativeFolder = new Stack<String>();
 		File folderRecord = new File(System.getProperty("user.dir"));
 		List<String> command_history = new ArrayList<String>();
@@ -28,25 +29,28 @@ public class SimpleShell {
 			if(commandLine.equals(""))
 				continue;
 			
+			if(commandLine.equalsIgnoreCase("exit") || 
+			   commandLine.equalsIgnoreCase("exit()"))
+				return;
+			
 			if(commandLine.charAt(0) != '!')
 				command_history.add(commandLine);
-			// renew command size
 			
 			// parse the input to obtain the command and any parameters
 			List<String> command = new ArrayList<String>();
-/*
+
 			// identify OS to specify commandc
 			if(isWindows)
 			{
 				command.add("cmd.exe");
 				command.add("/c");
+				commandShift = 2;
 			}
 			else
 			{
-				command.add("sh");
-				command.add("-c");
+				commandShift = 0;
 			}
-*/
+
 			// check if '!' is used
 			if(commandLine.charAt(0) == '!')
 			{
@@ -85,9 +89,11 @@ public class SimpleShell {
 							System.out.println("Invalid command. '!' must be followed by <int> only!");
 						}
 					}
+					commandIndex--;
 					// command index is ready
 					// but need to check to see if it's legal!
-					if(commandIndex >= command_history.size())
+					if(commandIndex >= command_history.size() ||
+						commandIndex < 0)
 					{
 						System.out.println("There's no such index of command in history!");
 						continue;
@@ -100,7 +106,7 @@ public class SimpleShell {
 				}
 			}
 			
-			if(commandLine.equals("history"))
+			if(commandLine.equalsIgnoreCase("history"))
 			{
 				for(int i = 0; i < command_history.size(); i++)
 					System.out.println(i + " " + command_history.get(i));
@@ -115,12 +121,11 @@ public class SimpleShell {
 			// create a ProcessBuilder object
 			ProcessBuilder build = new ProcessBuilder(command);
 			build.directory(folderRecord);
-			System.out.println("Command: " + build.command());
 			
 			// change directory
-			if(command.get(0).equals("cd"))
+			if(command.get(0+commandShift).equalsIgnoreCase("cd"))
 			{
-				if(command.size() == 1)	// home directory
+				if(command.size() == 1+commandShift)	// home directory
 				{
 					folderRecord = new File(System.getProperty("user.dir"));
 					currentRelativeFolder.clear();		// clean up the folder stack completely
@@ -128,9 +133,10 @@ public class SimpleShell {
 					System.out.println(build.directory());		
 					continue;
 				}
-				else if(command.size() == 2 && !command.get(1).equals(".."))
+				else if(command.size() == 2+commandShift && 
+						!command.get(1+commandShift).equals(".."))
 				{
-					File absolute_folder = new File(build.directory().toString(), command.get(1));
+					File absolute_folder = new File(build.directory().toString(), command.get(1+commandShift));
 					if(!absolute_folder.exists() || !absolute_folder.isDirectory())
 					{
 						System.out.println("Invalid folder direction!");
@@ -138,7 +144,7 @@ public class SimpleShell {
 					}
 					else
 					{
-						currentRelativeFolder.push(command.get(1));		// record the correct current relative folder name
+						currentRelativeFolder.push(command.get(1+commandShift));		// record the correct current relative folder name
 						// Change current directory
 						folderRecord = absolute_folder;
 						build.directory(folderRecord);
@@ -146,7 +152,8 @@ public class SimpleShell {
 						continue;
 					}
 				}
-				else if(command.size() == 2 && command.get(1).equals(".."))
+				else if(command.size() == 2+commandShift && 
+						command.get(1+commandShift).equals(".."))
 				{
 					if(currentRelativeFolder.isEmpty())
 					{
@@ -175,6 +182,7 @@ public class SimpleShell {
 				if(command.size() == 2)
 					if(command.get(1).equals(".."))
 						continue;
+				build.redirectErrorStream(true);
 				Process p = build.start();
 			
 				// obtain the output stream
@@ -191,11 +199,12 @@ public class SimpleShell {
 			}catch(java.io.IOException e)
 			{
 				System.out.println("Invalid command!");
-				try {
-					TimeUnit.SECONDS.sleep(1);
+/*				try {
+					TimeUnit.SECONDS.sleep(0);
 				} catch (InterruptedException e1) {
 					e1.printStackTrace();
 				}
+*/			
 			}
 		}
 	}
